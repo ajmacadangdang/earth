@@ -1,0 +1,647 @@
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+							<style>
+								body {
+									background-color: white; /* Ensure the iframe has a white background */
+								}
+
+								
+							</style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Earth's Rotation & Day/Night Cycle</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background:#000;
+      overflow:hidden;
+      font-family:'Segoe UI',sans-serif;
+    }
+    #canvas-container { width:100vw; height:100vh; }
+
+    #ui {
+      position:fixed;
+      top:20px; left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      pointer-events:none;
+      z-index:10;
+    }
+    h1 {
+      color:#fff;
+      font-size:1.4rem;
+      letter-spacing:3px;
+      text-transform:uppercase;
+      text-shadow:0 0 20px #4fc3f7;
+      pointer-events:none;
+    }
+    #phase-box {
+      background:rgba(0,0,0,0.55);
+      color:#e0f7fa;
+      padding:7px 22px;
+      border-radius:30px;
+      font-size:0.85rem;
+      font-weight:600;
+      border:1px solid rgba(255,255,255,0.15);
+      backdrop-filter:blur(8px);
+      pointer-events:none;
+    }
+
+    #controls {
+      position:fixed;
+      bottom:24px;
+      left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      gap:12px;
+      align-items:center;
+      z-index:10;
+    }
+    button {
+      padding:9px 24px;
+      border:none;
+      border-radius:30px;
+      font-size:0.88rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform 0.15s, box-shadow 0.15s;
+    }
+    button:hover { transform:scale(1.06); }
+    #btn-play {
+      background:linear-gradient(135deg,#0288d1,#01579b);
+      color:#fff;
+      box-shadow:0 4px 20px #0288d155;
+    }
+    #btn-rst {
+      background:rgba(255,255,255,0.08);
+      color:#e0e0e0;
+      border:1px solid rgba(255,255,255,0.2);
+    }
+    #btn-tilt {
+      background:rgba(255,255,255,0.08);
+      color:#e0e0e0;
+      border:1px solid rgba(255,255,255,0.2);
+    }
+    .speed-wrap {
+      color:#aaa;
+      font-size:0.82rem;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    input[type=range] { accent-color:#0288d1; width:85px; }
+
+    #info-panel {
+      position:fixed;
+      right:24px;
+      top:50%;
+      transform:translateY(-50%);
+      background:rgba(0,0,0,0.6);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px;
+      padding:16px 18px;
+      color:#e0e0e0;
+      font-size:0.8rem;
+      line-height:1.8;
+      backdrop-filter:blur(10px);
+      z-index:10;
+      min-width:170px;
+    }
+    #info-panel h3 {
+      color:#4fc3f7;
+      font-size:0.85rem;
+      margin-bottom:8px;
+      letter-spacing:1px;
+    }
+    .dot {
+      display:inline-block;
+      width:9px; height:9px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    #hint {
+      position:fixed;
+      bottom:72px;
+      left:50%;
+      transform:translateX(-50%);
+      color:rgba(255,255,255,0.35);
+      font-size:0.75rem;
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="ui">
+  <h1>🌍 Earth's Rotation & Day/Night Cycle</h1>
+  <div id="phase-box">Press Play to begin</div>
+</div>
+
+<div id="info-panel">
+  <h3>📚 KEY FACTS</h3>
+  <span class="dot" style="background:#FDB813"></span>Sun (light source)<br>
+  <span class="dot" style="background:#4fc3f7"></span>Day side (lit)<br>
+  <span class="dot" style="background:#1a237e"></span>Night side (dark)<br>
+  <span class="dot" style="background:#ffcc02"></span>City lights<br>
+  <span class="dot" style="background:#c0c0c0"></span>Moon orbit<br>
+  <br>
+  🔄 Rotation: 24 hrs<br>
+  🌕 Moon orbit: 27 days<br>
+  🌡️ Tilt: 23.5°<br>
+  📐 Drag to rotate view
+</div>
+
+<div id="controls">
+  <button id="btn-play">▶ Play</button>
+  <button id="btn-rst">↺ Reset</button>
+  <button id="btn-tilt">🌐 Toggle Tilt</button>
+  <div class="speed-wrap">
+    Speed:
+    <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1"/>
+    <span id="speed-val">1.0×</span>
+  </div>
+</div>
+
+<div id="hint">🖱️ Drag to orbit · Scroll to zoom</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Renderer ─────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// ── Scene & Camera ────────────────────────────────────────
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 5);
+
+// ── Controls ──────────────────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance   = 2.5;
+controls.maxDistance   = 20;
+
+// ── Texture Loader ────────────────────────────────────────
+const loader = new THREE.TextureLoader();
+
+function loadTex(url) {
+  return loader.load(url, undefined, undefined, () => {
+    console.warn('Texture failed, using fallback:', url);
+  });
+}
+
+// Using NASA/public domain textures via cdn
+const earthDay    = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg');
+const earthNight  = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_lights_2048.png');
+const earthSpec   = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg');
+const earthNormal = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg');
+const earthClouds = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg');
+const moonTex     = loadTex('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
+
+// ── Stars ─────────────────────────────────────────────────
+function createStarfield() {
+  const geo = new THREE.BufferGeometry();
+  const count = 8000;
+  const pos = new Float32Array(count * 3);
+  const col = new Float32Array(count * 3);
+  for (let i=0; i<count; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2*Math.random()-1);
+    const r     = 300 + Math.random() * 200;
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3+2] = r * Math.cos(phi);
+    const brightness = 0.6 + Math.random()*0.4;
+    // Slight color variation — blue-white, yellow-white
+    const tint = Math.random();
+    col[i*3]   = brightness * (tint > 0.8 ? 1.0 : tint > 0.6 ? 0.9 : 1.0);
+    col[i*3+1] = brightness * (tint > 0.8 ? 1.0 : tint > 0.6 ? 0.9 : 0.95);
+    col[i*3+2] = brightness * (tint > 0.8 ? 0.7 : tint > 0.6 ? 1.0 : 1.0);
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+  const mat = new THREE.PointsMaterial({
+    size:0.5, vertexColors:true, transparent:true, opacity:0.9,
+    sizeAttenuation:true
+  });
+  return new THREE.Points(geo, mat);
+}
+scene.add(createStarfield());
+
+// ── Sun ───────────────────────────────────────────────────
+const SUN_POS = new THREE.Vector3(50, 0, 0);
+
+// Sun mesh
+const sunGeo = new THREE.SphereGeometry(2.5, 32, 32);
+const sunMat = new THREE.MeshBasicMaterial({ color: 0xFDB813 });
+const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+sunMesh.position.copy(SUN_POS);
+scene.add(sunMesh);
+
+// Sun glow (sprite)
+const spriteMat = new THREE.SpriteMaterial({
+  color: 0xFFE066,
+  transparent: true,
+  opacity: 0.18,
+  depthWrite: false,
+});
+const sunGlow = new THREE.Sprite(spriteMat);
+sunGlow.position.copy(SUN_POS);
+sunGlow.scale.set(22, 22, 1);
+scene.add(sunGlow);
+
+// Sun corona rings
+for (let i=0; i<3; i++) {
+  const rg = new THREE.RingGeometry(2.8+i*1.2, 3.2+i*1.2, 64);
+  const rm = new THREE.MeshBasicMaterial({
+    color:0xFFCC00, side:THREE.DoubleSide,
+    transparent:true, opacity:0.06-i*0.015
+  });
+  const ring = new THREE.Mesh(rg, rm);
+  ring.position.copy(SUN_POS);
+  ring.lookAt(camera.position);
+  scene.add(ring);
+}
+
+// Point light from sun
+const sunLight = new THREE.DirectionalLight(0xfff5e0, 2.8);
+sunLight.position.copy(SUN_POS);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far  = 200;
+scene.add(sunLight);
+
+// Ambient (very dim — space)
+const ambient = new THREE.AmbientLight(0x111133, 0.4);
+scene.add(ambient);
+
+// ── Earth pivot (for axial tilt) ─────────────────────────
+const earthPivot = new THREE.Object3D();
+scene.add(earthPivot);
+
+// ── Earth ─────────────────────────────────────────────────
+const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+
+// Custom shader material for day/night blend
+const earthMat = new THREE.ShaderMaterial({
+  uniforms: {
+    dayTexture:    { value: earthDay },
+    nightTexture:  { value: earthNight },
+    normalMap:     { value: earthNormal },
+    specularMap:   { value: earthSpec },
+    sunDirection:  { value: new THREE.Vector3(1,0,0) },
+    atmosphereColor:{ value: new THREE.Color(0x4fc3f7) },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vWorldNormal;
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vWorldNormal = normalize((modelMatrix * vec4(normal,0.0)).xyz);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D dayTexture;
+    uniform sampler2D nightTexture;
+    uniform vec3 sunDirection;
+    uniform vec3 atmosphereColor;
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vWorldNormal;
+
+    void main() {
+      vec3 day   = texture2D(dayTexture,  vUv).rgb;
+      vec3 night = texture2D(nightTexture,vUv).rgb;
+      night *= 1.6; // boost city lights
+
+      float cosAngle = dot(vWorldNormal, normalize(sunDirection));
+      // Smooth terminator
+      float blend = smoothstep(-0.12, 0.18, cosAngle);
+
+      vec3 color = mix(night, day, blend);
+
+      // Atmosphere rim
+      float rim = 1.0 - max(dot(vNormal, vec3(0.0,0.0,1.0)), 0.0);
+      rim = pow(rim, 3.5);
+      color += atmosphereColor * rim * 0.45;
+
+      // Specular highlight on oceans (approximate)
+      float spec = pow(max(cosAngle, 0.0), 24.0) * 0.18;
+      color += vec3(spec);
+
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `,
+});
+
+const earth = new THREE.Mesh(earthGeo, earthMat);
+earth.castShadow    = true;
+earth.receiveShadow = true;
+earthPivot.add(earth);
+
+// ── Atmosphere glow shell ─────────────────────────────────
+const atmosGeo = new THREE.SphereGeometry(1.06, 64, 64);
+const atmosMat = new THREE.ShaderMaterial({
+  uniforms: {
+    sunDirection: { value: new THREE.Vector3(1,0,0) },
+    glowColor:    { value: new THREE.Color(0x4fc3f7) },
+  },
+  vertexShader: `
+    varying vec3 vNormal;
+    varying vec3 vWorldNormal;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vWorldNormal = normalize((modelMatrix * vec4(normal,0.0)).xyz);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 sunDirection;
+    uniform vec3 glowColor;
+    varying vec3 vNormal;
+    varying vec3 vWorldNormal;
+    void main() {
+      float intensity = pow(1.0 - abs(dot(vNormal, vec3(0,0,1))), 4.0);
+      float sunFacing = dot(vWorldNormal, normalize(sunDirection));
+      float lit = smoothstep(-0.3, 0.6, sunFacing);
+      gl_FragColor = vec4(glowColor * intensity * (0.4 + lit*0.6), intensity * 0.55);
+    }
+  `,
+  side: THREE.FrontSide,
+  blending: THREE.AdditiveBlending,
+  transparent: true,
+  depthWrite: false,
+});
+const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
+earthPivot.add(atmosphere);
+
+// ── Cloud layer ───────────────────────────────────────────
+const cloudGeo = new THREE.SphereGeometry(1.015, 64, 64);
+const cloudMat = new THREE.MeshPhongMaterial({
+  map: earthClouds,
+  transparent: true,
+  opacity: 0.18,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+earthPivot.add(clouds);
+
+// ── Axial tilt indicator ──────────────────────────────────
+const axisMat = new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.25 });
+const axisGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(0,-1.8,0), new THREE.Vector3(0,1.8,0)
+]);
+const axisLine = new THREE.Line(axisGeo, axisMat);
+earthPivot.add(axisLine);
+
+// ── Moon ──────────────────────────────────────────────────
+const moonOrbit = new THREE.Object3D();
+scene.add(moonOrbit);
+
+const moonGeo = new THREE.SphereGeometry(0.27, 32, 32);
+const moonMat = new THREE.MeshStandardMaterial({
+  map: moonTex,
+  roughness: 1,
+  metalness: 0,
+});
+const moon = new THREE.Mesh(moonGeo, moonMat);
+moon.position.set(2.8, 0, 0);
+moon.castShadow    = true;
+moon.receiveShadow = true;
+moonOrbit.add(moon);
+
+// Moon orbit ring
+const orbitRingGeo = new THREE.RingGeometry(2.78, 2.82, 128);
+const orbitRingMat = new THREE.MeshBasicMaterial({
+  color:0x888888, side:THREE.DoubleSide,
+  transparent:true, opacity:0.15
+});
+const orbitRing = new THREE.Mesh(orbitRingGeo, orbitRingMat);
+orbitRing.rotation.x = Math.PI/2;
+scene.add(orbitRing);
+
+// ── Equator & Tropics lines ───────────────────────────────
+function latitudeLine(lat, color, opacity=0.3) {
+  const pts = [];
+  const r = 1.012;
+  const phi = (90 - lat) * Math.PI / 180;
+  for (let i=0; i<=128; i++) {
+    const theta = (i/128) * Math.PI * 2;
+    pts.push(new THREE.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.sin(theta)
+    ));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color, transparent:true, opacity });
+  return new THREE.Line(geo, mat);
+}
+earth.add(latitudeLine(0,  0x00e5ff, 0.5));   // Equator
+earth.add(latitudeLine(23.5, 0xffcc02, 0.3));  // Tropic of Cancer
+earth.add(latitudeLine(-23.5,0xffcc02, 0.3));  // Tropic of Capricorn
+earth.add(latitudeLine(66.5, 0x90caf9, 0.2));  // Arctic circle
+earth.add(latitudeLine(-66.5,0x90caf9, 0.2));  // Antarctic circle
+
+// ── Labels (HTML overlay) ─────────────────────────────────
+// We'll use simple fixed labels via CSS positioned in 3D→2D projection
+const labelData = [
+  { name:'☀️ Day Side',    color:'#FDB813', worldPos: new THREE.Vector3( 1.5, 0,  0) },
+  { name:'🌑 Night Side',  color:'#90caf9', worldPos: new THREE.Vector3(-1.5, 0,  0) },
+  { name:'🌅 Terminator',  color:'#ff8a65', worldPos: new THREE.Vector3( 0,   0,  1.3) },
+  { name:'🌕 Moon',        color:'#e0e0e0', worldPos: new THREE.Vector3( 2.8, 0,  0) },
+];
+
+const labelEls = labelData.map(d => {
+  const el = document.createElement('div');
+  el.textContent = d.name;
+  el.style.cssText = `
+    position:fixed; pointer-events:none; z-index:5;
+    color:${d.color}; font-size:0.78rem; font-weight:700;
+    font-family:'Segoe UI',sans-serif;
+    background:rgba(0,0,0,0.45); padding:3px 10px;
+    border-radius:12px; border:1px solid ${d.color}44;
+    text-shadow:0 0 8px ${d.color};
+    transition: opacity 0.3s;
+  `;
+  document.body.appendChild(el);
+  return el;
+});
+
+function updateLabels() {
+  // Moon label follows moon world position
+  const moonWorld = new THREE.Vector3();
+  moon.getWorldPosition(moonWorld);
+  labelData[3].worldPos.copy(moonWorld);
+
+  labelData.forEach((d, i) => {
+    const v = d.worldPos.clone().project(camera);
+    const x = ( v.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    if (v.z < 1) {
+      labelEls[i].style.left   = x + 'px';
+      labelEls[i].style.top    = y + 'px';
+      labelEls[i].style.transform = 'translate(-50%,-50%)';
+      labelEls[i].style.opacity = '1';
+    } else {
+      labelEls[i].style.opacity = '0';
+    }
+  });
+}
+
+// ── State ─────────────────────────────────────────────────
+let running   = false;
+let rafId     = null;
+let lastTs    = null;
+let earthAngle= 0;
+let moonAngle = 0;
+let tiltOn    = true;
+const TILT    = 23.5 * Math.PI / 180;
+
+function applyTilt() {
+  earthPivot.rotation.z = tiltOn ? TILT : 0;
+}
+applyTilt();
+
+// ── Phase label ───────────────────────────────────────────
+const phaseBox = document.getElementById('phase-box');
+function updatePhaseLabel() {
+  const deg = ((earthAngle * 180 / Math.PI) % 360 + 360) % 360;
+  let txt;
+  if      (deg < 90)  txt = '🌅 Dawn — Sun rises on the eastern horizon';
+  else if (deg < 180) txt = '☀️ Daytime — Sun illuminates the surface';
+  else if (deg < 270) txt = '🌇 Dusk — Sun sets on the western horizon';
+  else                txt = '🌃 Nighttime — City lights glow in the dark';
+  phaseBox.textContent = txt;
+}
+
+// ── Animation loop ────────────────────────────────────────
+const speedSlider = document.getElementById('speed');
+const speedValEl  = document.getElementById('speed-val');
+speedSlider.addEventListener('input', () => {
+  speedValEl.textContent = parseFloat(speedSlider.value).toFixed(1) + '×';
+});
+
+function animate(ts) {
+  if (!running) return;
+  if (lastTs===null) lastTs = ts;
+  const dt = Math.min((ts-lastTs)/1000, 0.05) * parseFloat(speedSlider.value);
+  lastTs = ts;
+
+  // Earth self-rotation
+  earthAngle  += dt * 0.3;
+  earth.rotation.y = earthAngle;
+  clouds.rotation.y = earthAngle * 1.02; // clouds slightly faster
+
+  // Moon orbit
+  moonAngle += dt * 0.05;
+  moonOrbit.rotation.y = moonAngle;
+  moon.rotation.y      = -moonAngle; // tidally locked
+
+  // Keep sun corona rings facing camera
+  scene.children.forEach(c => {
+    if (c.geometry && c.geometry.type === 'RingGeometry') c.lookAt(camera.position);
+  });
+
+  // Update shader sun direction (stays fixed, earth rotates)
+  earthMat.uniforms.sunDirection.value.copy(SUN_POS).normalize();
+  atmosMat.uniforms.sunDirection.value.copy(SUN_POS).normalize();
+
+  controls.update();
+  updateLabels();
+  updatePhaseLabel();
+  renderer.render(scene, camera);
+  rafId = requestAnimationFrame(animate);
+}
+
+// ── Controls ──────────────────────────────────────────────
+const btnPlay = document.getElementById('btn-play');
+const btnRst  = document.getElementById('btn-rst');
+const btnTilt = document.getElementById('btn-tilt');
+
+btnPlay.addEventListener('click', () => {
+  if (running) {
+    running = false; btnPlay.textContent = '▶ Play';
+    cancelAnimationFrame(rafId);
+  } else {
+    running = true; lastTs = null;
+    btnPlay.textContent = '⏸ Pause';
+    rafId = requestAnimationFrame(animate);
+  }
+});
+
+btnRst.addEventListener('click', () => {
+  cancelAnimationFrame(rafId);
+  running=false; lastTs=null;
+  earthAngle=0; moonAngle=0;
+  earth.rotation.y=0;
+  moonOrbit.rotation.y=0;
+  btnPlay.textContent='▶ Play';
+  phaseBox.textContent='Press Play to begin';
+  renderer.render(scene,camera);
+});
+
+btnTilt.addEventListener('click', () => {
+  tiltOn = !tiltOn;
+  applyTilt();
+  btnTilt.textContent = tiltOn ? '🌐 Toggle Tilt' : '📐 Tilt: OFF';
+});
+
+// ── Resize ────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initial render
+renderer.render(scene, camera);
+</script>
+</body>
+</html>
+
+							<script>
+                            	
+							</script>
+                        </body>
+                        </html>
+                    
